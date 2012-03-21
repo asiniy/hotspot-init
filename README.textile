@@ -1,0 +1,5 @@
+h2. HotSpot.
+
+Команды вида: rake db:copy FROM="config/database.yml:development" TO="config/database2.yml:production"
+
+Не зависит от типа бд. Из pg в mysql, из sqlite3 в pg и т.д.
