@@ -19,10 +19,23 @@ namespace :db do
     class ToModelClass < ActiveRecord::Base
     end
     
-
     
-    skip_tables = ["schema_info", "schema_migrations"]
+    # creates db if not exist
     ActiveRecord::Base.establish_connection(
+      :adapter  => to['adapter'],
+      :host     => to['host'],
+      :username => to['username'],
+      :password => to['password'],
+      :database => 'postgres'
+    )
+    ActiveRecord::Base.connection.drop_database(to['database']) rescue nil
+    ActiveRecord::Base.connection.create_database(to['database'])
+    ActiveRecord::Base.remove_connection
+
+
+    # copying tables
+    skip_tables = ["schema_info", "schema_migrations"]
+    FromModelClass.establish_connection(
       :adapter  => from['adapter'],
       :host     => from['host'],
       :username => from['username'],
@@ -30,23 +43,42 @@ namespace :db do
       :database => from['database']
     )
     
-
     
-    (ActiveRecord::Base.connection.tables - skip_tables).each do |table_name|
     
-      FromModelClass.table_name = table_name
-      ToModelClass.table_name = table_name
-      ToModelClass.establish_connection(
+    ToModelClass.establish_connection(
         :adapter  => to['adapter'],
         :host     => to['host'],
         :username => to['username'],
         :password => to['password'],
         :database => to['database']
-      )
-      ToModelClass.record_timestamps = false
+    )
     
+    # delta_tables
+    delta_tables = FromModelClass.connection.tables - skip_tables
+    
+    
+    
+    # creating tables
+    
+    delta_tables.each do |table_name|
+      FromModelClass.table_name = table_name
       
+      ToModelClass.connection.drop_table(table_name) rescue nil
+      ToModelClass.connection.create_table(table_name)
+      FromModelClass.connection.columns(table_name).each do |column|
+        ToModelClass.connection.add_column(table_name, column.name, column.type.to_s) if column.name != "id"
+      end
+      ToModelClass.table_name = table_name
+    end
     
+    # assumes we already have all databases
+        
+    delta_tables.each do |table_name|
+      
+      FromModelClass.table_name = table_name
+      ToModelClass.record_timestamps = false 
+      ToModelClass.table_name = table_name
+      
       count = 0;
 
       print "Converting #{table_name}..."; STDOUT.flush

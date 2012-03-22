@@ -17,7 +17,7 @@ test:
 production:
   adapter: postgresql
   encoding: unicode
-  database: hotspot-init_production
+  database: hotspot_init_production
   pool: 5
   host: localhost
   username: postgres
